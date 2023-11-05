@@ -43,7 +43,7 @@ run().catch(console.dir);
 
 const usersCollection = client.db("hotelDb").collection("users");
 
-app.post('/api/v1/users', async (req, res) => {
+app.post('/api/v1/user', async (req, res) => {
     try {
         const newUser = req.body;
         const result = await usersCollection.insertOne(newUser)
@@ -53,13 +53,24 @@ app.post('/api/v1/users', async (req, res) => {
     }
 })
 
-app.post('/api/v1/create-token', (req, res) => {
+app.post('/api/v1/user/create-token', (req, res) => {
     try {
         const user = req.body;
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12hr" })
-        res.cookie('token', token, { httpOnly: true, sameSite: "none", secure: false });
-    } catch (error) {
 
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12hr" })
+        res.cookie('token', token, { httpOnly: false, sameSite: "none", secure: true }).send({ message: "Token created successfully" });
+    } catch (error) {
+        res.send({ message: "Error creating token" })
+    }
+})
+
+app.post('/api/v1/user/logout', (req, res) => {
+    try {
+        const user = req.body;
+        res.clearCookie('token', { httpOnly: false, sameSite: "none", secure: true }).send({ message: "Token expired" });
+    }
+    catch (err) {
+        res.send({ message: "Error logging out" })
     }
 })
 
