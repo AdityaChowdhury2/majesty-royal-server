@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -49,6 +50,16 @@ app.post('/api/v1/users', async (req, res) => {
         res.send(result)
     } catch (error) {
         res.send({ message: "Error inserting user" })
+    }
+})
+
+app.post('/api/v1/create-token', (req, res) => {
+    try {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12hr" })
+        res.cookie('token', token, { httpOnly: true, sameSite: "none", secure: false });
+    } catch (error) {
+
     }
 })
 
