@@ -16,6 +16,22 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+const verifyUser = (req, res, next) => {
+    // console.log(req.cookies.token);
+    const token = req.cookies.token;
+    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if (err) {
+            return;
+        }
+        else {
+            res.user = decoded;
+            next();
+        }
+    })
+
+
+}
+
 // Mongodb Connection
 const uri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASS}@cluster0.3fz84ur.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -60,9 +76,8 @@ app.post('/api/v1/user', async (req, res) => {
 app.post('/api/v1/user/create-token', (req, res) => {
     try {
         const user = req.body;
-
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12hr" })
-        res.cookie('token', token, { httpOnly: false, sameSite: "none", secure: true }).send({ message: "Token created successfully" });
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12h" })
+        res.cookie('token', token, { httpOnly: false, sameSite: "none", maxAge: 2 * 60 * 60 * 1000, secure: true }).send({ message: "Token created successfully" });
     } catch (error) {
         res.send({ message: "Error creating token" })
     }
@@ -71,7 +86,9 @@ app.post('/api/v1/user/create-token', (req, res) => {
 app.get('/api/v1/room', async (req, res) => {
     try {
         const { sortingOrder, priceRange, currentPage } = req.query || {};
-        const query = {};
+        const query = {
+            seatsAvailable: { $gt: 0 },
+        };
         const sortByPrice = {};
         const skip = currentPage * 4;
         if (priceRange) {
@@ -80,12 +97,11 @@ app.get('/api/v1/room', async (req, res) => {
         if (sortingOrder) {
             sortByPrice.price = Number(sortingOrder);
         }
-
-        const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1 };
+        const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1, seatsAvailable: 1 };
         const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).skip(skip).limit(4).toArray();
         const total = await roomsCollection.countDocuments(query);
-        console.log(req.url);
-        console.log(total);
+        // console.log(req.url);
+        // console.log(total);
         res.send({ result, total });
     } catch (error) {
         res.send({ error: "Couldn't find" })
@@ -95,7 +111,7 @@ app.get('/api/v1/room', async (req, res) => {
 app.get("/api/v1/room/:id", async (req, res) => {
     try {
         const id = req.params.id;
-        console.log(id);
+        // console.log(id);
         const query = { _id: new ObjectId(id) }
         const result = await roomsCollection.findOne(query);
         res.send(result);
