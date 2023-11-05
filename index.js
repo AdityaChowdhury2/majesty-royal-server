@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
@@ -69,23 +69,39 @@ app.post('/api/v1/user/create-token', (req, res) => {
 })
 
 app.get('/api/v1/room', async (req, res) => {
-    const { sortingOrder, priceRange, currentPage } = req.query || {};
-    const query = {};
-    const sortByPrice = {};
-    const skip = currentPage * 4;
-    if (priceRange) {
-        query.price = { $lte: Number(priceRange) }
-    }
-    if (sortingOrder) {
-        sortByPrice.price = Number(sortingOrder);
-    }
+    try {
+        const { sortingOrder, priceRange, currentPage } = req.query || {};
+        const query = {};
+        const sortByPrice = {};
+        const skip = currentPage * 4;
+        if (priceRange) {
+            query.price = { $lte: Number(priceRange) }
+        }
+        if (sortingOrder) {
+            sortByPrice.price = Number(sortingOrder);
+        }
 
-    const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1 };
-    const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).skip(skip).limit(4).toArray();
-    const total = await roomsCollection.countDocuments(query);
-    console.log(req.url);
-    console.log(total);
-    res.send({ result, total });
+        const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1 };
+        const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).skip(skip).limit(4).toArray();
+        const total = await roomsCollection.countDocuments(query);
+        console.log(req.url);
+        console.log(total);
+        res.send({ result, total });
+    } catch (error) {
+        res.send({ error: "Couldn't find" })
+    }
+})
+
+app.get("/api/v1/room/:id", async (req, res) => {
+    try {
+        const id = req.params.id;
+        console.log(id);
+        const query = { _id: new ObjectId(id) }
+        const result = await roomsCollection.findOne(query);
+        res.send(result);
+    } catch (error) {
+        res.send({ error: "Couldn't find room data" })
+    }
 })
 
 app.post('/api/v1/user/logout', (req, res) => {
@@ -97,8 +113,6 @@ app.post('/api/v1/user/logout', (req, res) => {
         res.send({ message: "Error logging out" })
     }
 })
-
-
 
 app.get('/', (req, res) => {
     res.send("Welcome to my Hostel Booking application!");
