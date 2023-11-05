@@ -69,18 +69,23 @@ app.post('/api/v1/user/create-token', (req, res) => {
 })
 
 app.get('/api/v1/room', async (req, res) => {
-    const { sortingOrder, priceRange } = req.query || {};
+    const { sortingOrder, priceRange, currentPage } = req.query || {};
     const query = {};
     const sortByPrice = {};
+    const skip = currentPage * 4;
     if (priceRange) {
         query.price = { $lte: Number(priceRange) }
     }
     if (sortingOrder) {
         sortByPrice.price = Number(sortingOrder);
     }
+
     const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1 };
-    const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).toArray();
-    res.send(result);
+    const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).skip(skip).limit(4).toArray();
+    const total = await roomsCollection.countDocuments(query);
+    console.log(req.url);
+    console.log(total);
+    res.send({ result, total });
 })
 
 app.post('/api/v1/user/logout', (req, res) => {
