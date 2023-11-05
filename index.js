@@ -42,12 +42,16 @@ async function run() {
 run().catch(console.dir);
 
 const usersCollection = client.db("hotelDb").collection("users");
+const roomsCollection = client.db("hotelDb").collection("rooms");
 
 app.post('/api/v1/user', async (req, res) => {
     try {
-        const newUser = req.body;
-        const result = await usersCollection.insertOne(newUser)
-        res.send(result)
+        const user = req.body;
+        const checkIfExists = await usersCollection.findOne({ email: user.email });
+        if (!checkIfExists) {
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
+        }
     } catch (error) {
         res.send({ message: "Error inserting user" })
     }
@@ -64,6 +68,21 @@ app.post('/api/v1/user/create-token', (req, res) => {
     }
 })
 
+app.get('/api/v1/room', async (req, res) => {
+    const { sortingOrder, priceRange } = req.query || {};
+    const query = {};
+    const sortByPrice = {};
+    if (priceRange) {
+        query.price = { $lte: Number(priceRange) }
+    }
+    if (sortingOrder) {
+        sortByPrice.price = Number(sortingOrder);
+    }
+    const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1 };
+    const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).toArray();
+    res.send(result);
+})
+
 app.post('/api/v1/user/logout', (req, res) => {
     try {
         const user = req.body;
@@ -73,6 +92,8 @@ app.post('/api/v1/user/logout', (req, res) => {
         res.send({ message: "Error logging out" })
     }
 })
+
+
 
 app.get('/', (req, res) => {
     res.send("Welcome to my Hostel Booking application!");
