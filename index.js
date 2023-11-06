@@ -18,18 +18,17 @@ app.use(cookieParser());
 
 const verifyUser = (req, res, next) => {
     // console.log(req.cookies.token);
-    const token = req.cookies.token;
+    const token = req?.cookies?.token;
+    if (!token) {
+        return res.status(401).send({ message: "Unauthorized" })
+    }
     jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
         if (err) {
-            return;
+            return res.status(401).send({ message: "unauthorized" })
         }
-        else {
-            res.user = decoded;
-            next();
-        }
+        req.user = decoded
+        next()
     })
-
-
 }
 
 // Mongodb Connection
@@ -59,6 +58,7 @@ run().catch(console.dir);
 
 const usersCollection = client.db("hotelDb").collection("users");
 const roomsCollection = client.db("hotelDb").collection("rooms");
+const bookingsCollection = client.db("hotelDb").collection("bookings");
 
 app.post('/api/v1/user', async (req, res) => {
     try {
@@ -86,9 +86,7 @@ app.post('/api/v1/user/create-token', (req, res) => {
 app.get('/api/v1/room', async (req, res) => {
     try {
         const { sortingOrder, priceRange, currentPage } = req.query || {};
-        const query = {
-            seatsAvailable: { $gt: 0 },
-        };
+        const query = {};
         const sortByPrice = {};
         const skip = currentPage * 4;
         if (priceRange) {
@@ -108,15 +106,24 @@ app.get('/api/v1/room', async (req, res) => {
     }
 })
 
-app.get("/api/v1/room/:id", async (req, res) => {
+app.get("/api/v1/room/:id", verifyUser, async (req, res) => {
     try {
         const id = req.params.id;
-        // console.log(id);
         const query = { _id: new ObjectId(id) }
         const result = await roomsCollection.findOne(query);
         res.send(result);
     } catch (error) {
         res.send({ error: "Couldn't find room data" })
+    }
+})
+
+app.post('/api/v1/user/book-room', verifyUser, async (req, res) => {
+    try {
+        const bookingDetails = req.body;
+        const result = await bookingsCollection.insertOne(bookingDetails)
+        res.send(result);
+    } catch (error) {
+
     }
 })
 
@@ -129,6 +136,8 @@ app.post('/api/v1/user/logout', (req, res) => {
         res.send({ message: "Error logging out" })
     }
 })
+
+
 
 app.get('/', (req, res) => {
     res.send("Welcome to my Hostel Booking application!");
