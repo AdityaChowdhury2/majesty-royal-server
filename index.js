@@ -59,6 +59,7 @@ run().catch(console.dir);
 const usersCollection = client.db("hotelDb").collection("users");
 const roomsCollection = client.db("hotelDb").collection("rooms");
 const bookingsCollection = client.db("hotelDb").collection("bookings");
+const reviewsCollection = client.db("hotelDb").collection("reviews");
 
 app.post('/api/v1/user', async (req, res) => {
     try {
@@ -136,11 +137,11 @@ app.patch('/api/v1/room/:id', async (req, res) => {
 
 app.get('/api/v1/bookings', async (req, res) => {
     const query = {}
-    const date = req?.query?.date;
+    const bookingDate = req?.query?.bookingDate;
     const roomId = req?.query?.roomId;
     const uid = req?.query?.uid;
-    if (date) {
-        query.date = date;
+    if (bookingDate) {
+        query.bookingDate = bookingDate;
     }
     if (roomId) {
         query.roomId = roomId;
@@ -157,11 +158,26 @@ app.get('/api/v1/bookings', async (req, res) => {
 app.post('/api/v1/user/book-room', verifyUser, async (req, res) => {
     try {
         const bookingDetails = req.body;
+        console.log(bookingDetails);
         const result = await bookingsCollection.insertOne(bookingDetails)
         res.send(result);
     } catch (error) {
 
     }
+})
+
+app.post('/api/v1/review', verifyUser, async (req, res) => {
+    try {
+        const review = req.body;
+        const today = new Date();
+        review.timeStamp = today.toISOString();
+        console.log(review);
+        const result = await reviewsCollection.insertOne(review)
+        res.send(result);
+    } catch (error) {
+
+    }
+
 })
 
 app.post('/api/v1/user/logout', (req, res) => {
