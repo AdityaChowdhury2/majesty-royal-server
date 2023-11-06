@@ -83,6 +83,8 @@ app.post('/api/v1/user/create-token', (req, res) => {
     }
 })
 
+
+
 app.get('/api/v1/room', async (req, res) => {
     try {
         const { sortingOrder, priceRange, currentPage } = req.query || {};
@@ -114,6 +116,21 @@ app.get("/api/v1/room/:id", verifyUser, async (req, res) => {
         res.send(result);
     } catch (error) {
         res.send({ error: "Couldn't find room data" })
+    }
+})
+
+app.patch('/api/v1/room/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const seatsBooked = req.body.seatsCount;
+        const operation = {
+            $inc: { "seatsAvailable": -seatsBooked }
+        }
+        const result = await roomsCollection.findOneAndUpdate(query, operation)
+        res.send(result);
+    } catch (error) {
+
     }
 })
 
