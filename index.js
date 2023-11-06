@@ -134,6 +134,26 @@ app.patch('/api/v1/room/:id', async (req, res) => {
     }
 })
 
+app.get('/api/v1/bookings', async (req, res) => {
+    const query = {}
+    const date = req?.query?.date;
+    const roomId = req?.query?.roomId;
+    const uid = req?.query?.uid;
+    if (date) {
+        query.date = date;
+    }
+    if (roomId) {
+        query.roomId = roomId;
+    }
+    if (uid) {
+        query.uid = uid;
+    }
+    console.log(query);
+    const result = await bookingsCollection.find(query).toArray();
+    console.log(result);
+    // res.send(result);
+})
+
 app.post('/api/v1/user/book-room', verifyUser, async (req, res) => {
     try {
         const bookingDetails = req.body;
