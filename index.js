@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 
 //middlewares
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173', 'https://majesty-royal-aditya.web.app'],
     credentials: true,
 }
 ));
@@ -74,15 +74,7 @@ app.post('/api/v1/user', async (req, res) => {
     }
 })
 
-app.post('/api/v1/user/create-token', (req, res) => {
-    try {
-        const user = req.body;
-        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12h" })
-        res.cookie('token', token, { httpOnly: false, sameSite: "none", maxAge: 2 * 60 * 60 * 1000, secure: true }).send({ message: "Token created successfully" });
-    } catch (error) {
-        res.send({ message: "Error creating token" })
-    }
-})
+
 
 
 
@@ -152,7 +144,7 @@ app.get('/api/v1/bookings', async (req, res) => {
     console.log(query);
     const result = await bookingsCollection.find(query).toArray();
     console.log(result);
-    // res.send(result);
+    res.send(result);
 })
 
 app.post('/api/v1/user/book-room', verifyUser, async (req, res) => {
@@ -177,7 +169,32 @@ app.post('/api/v1/review', verifyUser, async (req, res) => {
     } catch (error) {
 
     }
+})
 
+app.get('/api/v1/reviews/', async (req, res) => {
+    try {
+        const roomId = req?.query?.roomId
+        const filter = {}
+        if (roomId) {
+            filter.roomId = roomId;
+        }
+        const result = await reviewsCollection.find(filter).toArray()
+        res.send(result)
+    } catch (error) {
+
+    }
+})
+
+
+
+app.post('/api/v1/user/create-token', (req, res) => {
+    try {
+        const user = req.body;
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "12h" })
+        res.cookie('token', token, { httpOnly: false, sameSite: "none", maxAge: 2 * 60 * 60 * 1000, secure: true }).send({ message: "Token created successfully" });
+    } catch (error) {
+        res.send({ message: "Error creating token" })
+    }
 })
 
 app.post('/api/v1/user/logout', (req, res) => {
@@ -189,7 +206,6 @@ app.post('/api/v1/user/logout', (req, res) => {
         res.send({ message: "Error logging out" })
     }
 })
-
 
 
 app.get('/', (req, res) => {
