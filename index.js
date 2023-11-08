@@ -44,22 +44,7 @@ const verifyUser = (req, res, next) => {
         next();
     })
 }
-async function run() {
-    try {
-        // Connect the client to the server	(optional starting in v4.7)
-        // await client.connect();
-        // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
-
-
-    } finally {
-        // Ensures that the client will close when you finish/error
-        // await client.close();
-    }
-}
-run().catch(console.dir);
 
 const usersCollection = client.db("hotelDb").collection("users");
 const roomsCollection = client.db("hotelDb").collection("rooms");
@@ -81,9 +66,9 @@ app.get('/api/v1/room', async (req, res) => {
         const projection = { roomName: 1, _id: 1, price: 1, thumbnailImage: 1, specialOffer: 1, seatsAvailable: 1, reviewCount: 1 };
         const result = await roomsCollection.find(query).sort(sortByPrice).project(projection).skip(skip).limit(4).toArray();
         const total = await roomsCollection.countDocuments(query);
-        res.send({ result, total });
+        res.status(200).send({ result, total });
     } catch (error) {
-        res.send({ error: "Couldn't find" })
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
@@ -92,9 +77,9 @@ app.get("/api/v1/room/:id", verifyUser, async (req, res) => {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) }
         const result = await roomsCollection.findOne(query);
-        res.send(result);
+        res.status(200).send(result);
     } catch (error) {
-        res.send({ error: "Couldn't find room data" })
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
@@ -114,41 +99,48 @@ app.patch('/api/v1/room/:id', verifyUser, async (req, res) => {
             }
 
         }
-        // console.log(updatedRoom);
         const result = await roomsCollection.findOneAndUpdate(filter, updatedRoom)
-        res.send(result);
+        res.status(200).send(result);
     } catch (error) {
-
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
-// todo: check if 403
 app.get('/api/v1/bookings', verifyUser, async (req, res) => {
-    const query = {}
-    const bookingDate = req?.query?.bookingDate;
-    const roomId = req?.query?.roomId;
-    const uid = req?.query?.uid;
-    if (bookingDate) {
-        query.bookingDate = bookingDate;
+    try {
+        const query = {}
+        const bookingDate = req?.query?.bookingDate;
+        const roomId = req?.query?.roomId;
+        const userEmail = req?.query?.email;
+        const decodedEmail = req.user?.email;
+        if (bookingDate) {
+            query.bookingDate = bookingDate;
+        }
+        if (roomId) {
+            query.roomId = roomId;
+        }
+        if (userEmail) {
+            if (userEmail !== decodedEmail) {
+                return res.status(403).send({ message: "Forbidden Access" })
+            }
+            else {
+                query.email = userEmail;
+            }
+        }
+        const result = await bookingsCollection.find(query).toArray();
+        res.status(200).send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" })
     }
-    if (roomId) {
-        query.roomId = roomId;
-    }
-    if (uid) {
-        query.uid = uid;
-    }
-    // console.log(query);
-    const result = await bookingsCollection.find(query).toArray();
-    res.send(result);
 })
 
 app.delete('/api/v1/bookings/:bookingId', verifyUser, async (req, res) => {
     try {
         const bookingId = req.params.bookingId;
         const result = await bookingsCollection.deleteOne({ _id: new ObjectId(bookingId) })
-        res.send(result);
+        res.status(200).send(result);
     } catch (error) {
-        res.send({ message: "Internal Server Error", error: error })
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
@@ -158,10 +150,13 @@ app.post('/api/v1/user', async (req, res) => {
         const checkIfExists = await usersCollection.findOne({ email: user.email });
         if (!checkIfExists) {
             const result = await usersCollection.insertOne(user);
-            res.send(result);
+            res.status(200).send(result);
+        }
+        else {
+            res.status(200).send({ message: "User already exists" })
         }
     } catch (error) {
-        res.send({ message: "Error inserting user" })
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
@@ -169,25 +164,22 @@ app.post('/api/v1/user', async (req, res) => {
 app.post('/api/v1/user/book-room', verifyUser, async (req, res) => {
     try {
         const bookingDetails = req.body;
-        // console.log(bookingDetails);
         const result = await bookingsCollection.insertOne(bookingDetails)
-        res.send(result);
+        res.status(200).send(result);
     } catch (error) {
-
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
 app.post('/api/v1/review', verifyUser, async (req, res) => {
     try {
         const review = req.body;
-
         const today = new Date();
         review.timeStamp = today.toISOString();
-        // console.log(review);
         const result = await reviewsCollection.insertOne(review)
-        res.send(result);
+        res.status(200).send(result);
     } catch (error) {
-
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
@@ -200,16 +192,15 @@ app.get('/api/v1/reviews/', async (req, res) => {
             filter.roomId = roomId;
         }
         const result = await reviewsCollection.find(filter).limit(limit).toArray();
-        res.send(result)
+        res.status(200).send(result)
     } catch (error) {
-
+        res.status(500).send({ message: "Internal Server Error" })
     }
 })
 
 app.post('/api/v1/user/create-token', async (req, res) => {
     const user = req.body;
     const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: "1h" })
-
     res.cookie(
         "token",
         token,
@@ -219,12 +210,10 @@ app.post('/api/v1/user/create-token', async (req, res) => {
             secure: process.env.NODE_ENV === "production" ? true : false,
             sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         }
-    ).send({ message: "Token created successfully" });
-
+    ).status(200).send({ message: "Token created successfully" });
 })
 
 app.post('/api/v1/user/logout', async (req, res) => {
-
     const user = req.body;
     res.clearCookie(
         "token",
@@ -233,12 +222,21 @@ app.post('/api/v1/user/logout', async (req, res) => {
             secure: process.env.NODE_ENV === "production" ? true : false,
             sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         }
-    ).send({ message: 'logout' })
+    ).status(200).send({ message: 'logout' })
 
 })
 
 
+async function run() {
+    try {
+        await client.db("admin").command({ ping: 1 });
+        console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
+    } catch (err) {
+        console.log("Failed to connect");
+    }
+}
+run().catch(console.dir);
 
 app.get('/', (req, res) => {
     res.send("Welcome to my Hostel Booking application!");
