@@ -32,7 +32,7 @@ const client = new MongoClient(uri, {
 });
 const verifyUser = (req, res, next) => {
     // console.log(req.cookies.token);
-    const { token } = req.cookies;
+    const token = req.cookies.token;
     if (!token) {
         return res.status(401).send({ message: "Unauthorized" })
     }
@@ -43,6 +43,7 @@ const verifyUser = (req, res, next) => {
         req.user = decoded
         next();
     })
+
 }
 
 
@@ -97,9 +98,10 @@ app.patch('/api/v1/room/:id', verifyUser, async (req, res) => {
             updatedRoom['$set'] = {
                 "reviewCount": reviewCount
             }
-
         }
+        console.log(updatedRoom);
         const result = await roomsCollection.findOneAndUpdate(filter, updatedRoom)
+        console.log(result);
         res.status(200).send(result);
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error" })
@@ -127,6 +129,7 @@ app.get('/api/v1/bookings', verifyUser, async (req, res) => {
                 query.email = userEmail;
             }
         }
+        console.log(query);
         const result = await bookingsCollection.find(query).toArray();
         res.status(200).send(result);
     } catch (error) {
@@ -139,6 +142,21 @@ app.delete('/api/v1/bookings/:bookingId', verifyUser, async (req, res) => {
         const bookingId = req.params.bookingId;
         const result = await bookingsCollection.deleteOne({ _id: new ObjectId(bookingId) })
         res.status(200).send(result);
+    } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" })
+    }
+})
+
+app.patch('/api/v1/bookings/:bookingId', verifyUser, async (req, res) => {
+    try {
+        const bookingId = req.params.bookingId;
+        const filter = { _id: new ObjectId(bookingId) };
+        const updatedDate = req.body.bookingDate;
+        const updatedBooking = {
+            $set: { bookingDate: updatedDate }
+        }
+        const result = await bookingsCollection.findOneAndUpdate(filter, updatedBooking)
+        res.send(result)
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error" })
     }
@@ -165,6 +183,7 @@ app.post('/api/v1/user/book-room', verifyUser, async (req, res) => {
     try {
         const bookingDetails = req.body;
         const result = await bookingsCollection.insertOne(bookingDetails)
+        console.log("room booking status: " + result);
         res.status(200).send(result);
     } catch (error) {
         res.status(500).send({ message: "Internal Server Error" })
@@ -205,7 +224,6 @@ app.post('/api/v1/user/create-token', async (req, res) => {
         "token",
         token,
         {
-            maxAge: 3600 * 24,
             httpOnly: true,
             secure: process.env.NODE_ENV === "production" ? true : false,
             sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
