@@ -37,8 +37,6 @@ async function run() {
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
-    } catch (err) {
-        console.log(err);
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
@@ -141,12 +139,12 @@ app.get('/api/v1/bookings', verifyUser, async (req, res) => {
             query.roomId = roomId;
         }
         if (userEmail) {
-            // if (userEmail !== decodedEmail) {
-            //     return res.status(403).send({ message: "Forbidden Access" })
-            // }
-            // else {
-            query.email = userEmail;
-            // }
+            if (userEmail !== decodedEmail) {
+                return res.status(403).send({ message: "Forbidden Access" })
+            }
+            else {
+                query.email = userEmail;
+            }
         }
         const result = await bookingsCollection.find(query).toArray();
         res.status(200).send(result);
@@ -253,9 +251,7 @@ app.post('/api/v1/user/create-token', async (req, res) => {
                 httpOnly: false,
                 sameSite: "none",
                 secure: true
-                // httpOnly: false,
-                // secure: process.env.NODE_ENV === "production" ? true : false,
-                // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+
             }
         ).status(200).send({ message: "Token created successfully" });
     } catch (error) {
@@ -264,7 +260,7 @@ app.post('/api/v1/user/create-token', async (req, res) => {
     }
 })
 
-app.post('/api/v1/user/logout', async (req, res) => {
+app.get('/api/v1/user/logout', async (req, res) => {
     try {
         const user = req.body;
         res.clearCookie(
@@ -273,9 +269,7 @@ app.post('/api/v1/user/logout', async (req, res) => {
                 maxAge: 0,
                 sameSite: "none",
                 secure: true
-                // maxAge: 0,
-                // secure: process.env.NODE_ENV === "production" ? true : false,
-                // sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+
             }
         ).status(200).send({ message: 'logout' })
     } catch (error) {
